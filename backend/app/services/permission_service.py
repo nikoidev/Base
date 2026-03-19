@@ -1,10 +1,13 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..models.permission import Permission
 from ..schemas.permission import PermissionCreate, PermissionUpdate
+from ..utils.pagination import paginate, validate_order_by
+
+ALLOWED_ORDER_FIELDS = ["id", "name", "code", "resource", "action", "created_at"]
 
 
 class PermissionService:
@@ -28,10 +31,9 @@ class PermissionService:
         order_by: str = "id",
         order_desc: bool = False,
     ) -> Dict[str, Any]:
-        """Get permissions with pagination, search, filters, and sorting"""
+        """Get permissions with pagination, search, filters, and sorting."""
         query = db.query(Permission)
 
-        # Search by name, code, or description
         if search:
             search_filter = f"%{search}%"
             query = query.filter(
@@ -42,41 +44,23 @@ class PermissionService:
                 )
             )
 
-        # Filter by resource
         if resource:
             query = query.filter(Permission.resource == resource)
 
-        # Filter by action
         if action:
             query = query.filter(Permission.action == action)
 
-        # Filter by active status
         if is_active is not None:
             query = query.filter(Permission.is_active == is_active)
 
-        # Get total count
-        total = query.count()
-
-        # Sorting
-        order_column = getattr(Permission, order_by, Permission.id)
+        safe_order_by = validate_order_by(order_by, ALLOWED_ORDER_FIELDS)
+        order_column = getattr(Permission, safe_order_by)
         if order_desc:
             query = query.order_by(order_column.desc())
         else:
             query = query.order_by(order_column.asc())
 
-        # Pagination
-        items = query.offset(skip).limit(limit).all()
-
-        page = (skip // limit) + 1 if limit > 0 else 1
-        pages = (total + limit - 1) // limit if limit > 0 else 1
-
-        return {
-            "items": items,
-            "total": total,
-            "page": page,
-            "pages": pages,
-            "limit": limit,
-        }
+        return paginate(query, skip=skip, limit=limit)
 
     @staticmethod
     def create_permission(db: Session, permission: PermissionCreate) -> Permission:

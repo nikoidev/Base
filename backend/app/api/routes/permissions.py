@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -12,6 +12,7 @@ from ...schemas.permission import (
 )
 from ...services.permission_service import PermissionService
 from ..deps import get_current_active_user
+from ..rbac import require_permission
 
 router = APIRouter()
 
@@ -29,7 +30,7 @@ def read_permissions(
     order_by: str = Query("id", description="Field to order by"),
     order_desc: bool = Query(False, description="Order descending"),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("permission.read")),
 ):
     skip = (page - 1) * limit
     result = PermissionService.get_permissions(
@@ -50,7 +51,7 @@ def read_permissions(
 def read_permission(
     permission_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("permission.read")),
 ):
     permission = PermissionService.get_permission(db, permission_id=permission_id)
     if permission is None:
@@ -64,9 +65,8 @@ def read_permission(
 def create_permission(
     permission: PermissionCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("permission.create")),
 ):
-    # Check if permission code already exists
     db_permission = PermissionService.get_permission_by_code(db, code=permission.code)
     if db_permission:
         raise HTTPException(
@@ -81,7 +81,7 @@ def update_permission(
     permission_id: int,
     permission: PermissionUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("permission.update")),
 ):
     db_permission = PermissionService.update_permission(
         db, permission_id=permission_id, permission=permission
@@ -95,7 +95,7 @@ def update_permission(
 def delete_permission(
     permission_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("permission.delete")),
 ):
     success = PermissionService.delete_permission(db, permission_id=permission_id)
     if not success:

@@ -1,44 +1,42 @@
-version: '3.8'
-
 services:
-  usuarios_postgres:
+  app_postgres:
     image: postgres:15
-    container_name: usuarios_postgres
+    container_name: app_postgres
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
-      POSTGRES_DB: usuarios_db
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin123}
+      POSTGRES_DB: ${POSTGRES_DB:-app_db}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
-      - ./backend/usuarios_postgres_data:/var/lib/postgresql/data
+      - ./backend/postgres_data:/var/lib/postgresql/data
     networks:
-      - usuarios_network
+      - app_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d usuarios_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-app_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  usuarios_pgadmin:
+  app_pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: usuarios_pgadmin
+    container_name: app_pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
-      - "5051:80"
+      - "${PGADMIN_PORT:-5051}:80"
     volumes:
-      - ./backend/usuarios_pgadmin_data:/var/lib/pgadmin
+      - ./backend/pgadmin_data:/var/lib/pgadmin
     depends_on:
-      usuarios_postgres:
+      app_postgres:
         condition: service_healthy
     networks:
-      - usuarios_network
+      - app_network
     restart: unless-stopped
 
 networks:
-  usuarios_network:
+  app_network:
     driver: bridge

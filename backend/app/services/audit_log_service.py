@@ -1,12 +1,13 @@
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import desc, or_
 from sqlalchemy.orm import Session
 
 from ..models.audit_log import AuditLog
 from ..models.user import User
-from ..schemas.audit_log import AuditLogCreate
+from ..utils.pagination import paginate, validate_order_by
+
+ALLOWED_ORDER_FIELDS = ["id", "action", "resource", "created_at"]
 
 
 class AuditLogService:
@@ -21,7 +22,7 @@ class AuditLogService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
     ) -> AuditLog:
-        """Create an audit log entry"""
+        """Create an audit log entry."""
         log = AuditLog(
             user_id=user_id,
             action=action,
@@ -48,10 +49,9 @@ class AuditLogService:
         order_by: str = "created_at",
         order_desc: bool = True,
     ) -> Dict[str, Any]:
-        """Get audit logs with pagination and filters"""
+        """Get audit logs with pagination and filters."""
         query = db.query(AuditLog)
 
-        # Filters
         if user_id:
             query = query.filter(AuditLog.user_id == user_id)
 
@@ -61,7 +61,6 @@ class AuditLogService:
         if resource:
             query = query.filter(AuditLog.resource == resource)
 
-        # Search in details or IP
         if search:
             search_filter = f"%{search}%"
             query = query.filter(
@@ -71,34 +70,18 @@ class AuditLogService:
                 )
             )
 
-        # Get total count
-        total = query.count()
-
-        # Sorting (default: newest first)
-        order_column = getattr(AuditLog, order_by, AuditLog.created_at)
+        safe_order_by = validate_order_by(order_by, ALLOWED_ORDER_FIELDS, default="created_at")
+        order_column = getattr(AuditLog, safe_order_by)
         if order_desc:
             query = query.order_by(order_column.desc())
         else:
             query = query.order_by(order_column.asc())
 
-        # Pagination
-        items = query.offset(skip).limit(limit).all()
-
-        # Calculate pagination info
-        page = (skip // limit) + 1 if limit > 0 else 1
-        pages = (total + limit - 1) // limit if limit > 0 else 1
-
-        return {
-            "items": items,
-            "total": total,
-            "page": page,
-            "pages": pages,
-            "limit": limit,
-        }
+        return paginate(query, skip=skip, limit=limit)
 
     @staticmethod
-    def get_user_activity(db: Session, user_id: int, limit: int = 10):
-        """Get recent activity for a specific user"""
+    def get_user_activity(db: Session, user_id: int, limit: int = 10) -> list[AuditLog]:
+        """Get recent activity for a specific user."""
         return (
             db.query(AuditLog)
             .filter(AuditLog.user_id == user_id)
@@ -108,6 +91,31 @@ class AuditLogService:
         )
 
     @staticmethod
-    def get_recent_logs(db: Session, limit: int = 10):
-        """Get most recent audit logs (for dashboard)"""
+    def get_recent_logs(db: Session, limit: int = 10) -> list[AuditLog]:
+        """Get most recent audit logs (for dashboard)."""
         return db.query(AuditLog).order_by(desc(AuditLog.created_at)).limit(limit).all()
+
+    @staticmethod
+    def enrich_log(log: AuditLog, user: Optional[User] = None) -> Dict[str, Any]:
+        """Enrich an audit log with user information for API responses."""
+        result = {
+            "id": log.id,
+            "user_id": log.user_id,
+            "action": log.action,
+            "resource": log.resource,
+            "resource_id": log.resource_id,
+            "details": log.details,
+            "ip_address": log.ip_address,
+            "user_agent": log.user_agent,
+            "created_at": log.created_at,
+        }
+        if user:
+            result["user_username"] = user.username
+            result["user_email"] = user.email
+        elif log.user:
+            result["user_username"] = log.user.username
+            result["user_email"] = log.user.email
+        else:
+            result["user_username"] = None
+            result["user_email"] = None
+        return result

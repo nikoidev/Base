@@ -114,6 +114,30 @@ def test_permissions(db: Session) -> list[Permission]:
             "resource": "roles",
             "action": "delete",
         },
+        {
+            "name": "Crear Permiso",
+            "code": "permission.create",
+            "resource": "permissions",
+            "action": "create",
+        },
+        {
+            "name": "Leer Permiso",
+            "code": "permission.read",
+            "resource": "permissions",
+            "action": "read",
+        },
+        {
+            "name": "Actualizar Permiso",
+            "code": "permission.update",
+            "resource": "permissions",
+            "action": "update",
+        },
+        {
+            "name": "Eliminar Permiso",
+            "code": "permission.delete",
+            "resource": "permissions",
+            "action": "delete",
+        },
     ]
 
     permissions = []

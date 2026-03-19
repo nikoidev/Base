@@ -1,12 +1,15 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from sqlalchemy import func, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..core.security import get_password_hash, verify_password
 from ..models.role import Role
 from ..models.user import User
 from ..schemas.user import UserCreate, UserUpdate
+from ..utils.pagination import paginate, validate_order_by
+
+ALLOWED_ORDER_FIELDS = ["id", "username", "email", "first_name", "last_name", "created_at"]
 
 
 class UserService:
@@ -33,13 +36,9 @@ class UserService:
         order_by: str = "id",
         order_desc: bool = False,
     ) -> Dict[str, Any]:
-        """
-        Get users with pagination, search, filters, and sorting
-        Returns: {items: List[User], total: int, page: int, pages: int}
-        """
+        """Get users with pagination, search, filters, and sorting."""
         query = db.query(User)
 
-        # Search by username, email, first_name, or last_name
         if search:
             search_filter = f"%{search}%"
             query = query.filter(
@@ -51,38 +50,21 @@ class UserService:
                 )
             )
 
-        # Filter by role
         if role_id:
             query = query.join(User.roles).filter(Role.id == role_id)
 
-        # Filter by active status
         if is_active is not None:
             query = query.filter(User.is_active == is_active)
 
-        # Get total count before pagination
-        total = query.count()
-
-        # Sorting
-        order_column = getattr(User, order_by, User.id)
+        # Sorting with validated order_by
+        safe_order_by = validate_order_by(order_by, ALLOWED_ORDER_FIELDS)
+        order_column = getattr(User, safe_order_by)
         if order_desc:
             query = query.order_by(order_column.desc())
         else:
             query = query.order_by(order_column.asc())
 
-        # Pagination
-        items = query.offset(skip).limit(limit).all()
-
-        # Calculate pagination info
-        page = (skip // limit) + 1 if limit > 0 else 1
-        pages = (total + limit - 1) // limit if limit > 0 else 1
-
-        return {
-            "items": items,
-            "total": total,
-            "page": page,
-            "pages": pages,
-            "limit": limit,
-        }
+        return paginate(query, skip=skip, limit=limit)
 
     @staticmethod
     def create_user(db: Session, user: UserCreate) -> User:
@@ -96,7 +78,6 @@ class UserService:
             is_active=user.is_active,
         )
 
-        # Add roles if provided
         if user.role_ids:
             roles = db.query(Role).filter(Role.id.in_(user.role_ids)).all()
             db_user.roles = roles
@@ -114,13 +95,11 @@ class UserService:
 
         update_data = user.model_dump(exclude_unset=True)
 
-        # Handle password separately
         if "password" in update_data:
             update_data["hashed_password"] = get_password_hash(
                 update_data.pop("password")
             )
 
-        # Handle roles separately
         if "role_ids" in update_data:
             role_ids = update_data.pop("role_ids")
             if role_ids is not None:

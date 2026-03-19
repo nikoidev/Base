@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -7,6 +7,7 @@ from ...core.database import get_db
 from ...schemas.user import UserCreate, UserListResponse, UserResponse, UserUpdate
 from ...services.user_service import UserService
 from ..deps import get_current_active_user
+from ..rbac import require_permission
 
 router = APIRouter()
 
@@ -25,7 +26,7 @@ def read_users(
     ),
     order_desc: bool = Query(False, description="Order descending"),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("user.read")),
 ):
     skip = (page - 1) * limit
     result = UserService.get_users(
@@ -45,7 +46,7 @@ def read_users(
 def read_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("user.read")),
 ):
     user = UserService.get_user(db, user_id=user_id)
     if user is None:
@@ -57,9 +58,8 @@ def read_user(
 def create_user(
     user: UserCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("user.create")),
 ):
-    # Check if user already exists
     db_user = UserService.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -76,7 +76,7 @@ def update_user(
     user_id: int,
     user: UserUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("user.update")),
 ):
     db_user = UserService.update_user(db, user_id=user_id, user=user)
     if db_user is None:
@@ -88,7 +88,7 @@ def update_user(
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("user.delete")),
 ):
     success = UserService.delete_user(db, user_id=user_id)
     if not success:

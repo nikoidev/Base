@@ -42,23 +42,7 @@ def get_audit_logs(
         order_desc=order_desc,
     )
 
-    # Enrich with user information
-    enriched_items = []
-    for log in result["items"]:
-        log_dict = {
-            "id": log.id,
-            "user_id": log.user_id,
-            "action": log.action,
-            "resource": log.resource,
-            "resource_id": log.resource_id,
-            "details": log.details,
-            "ip_address": log.ip_address,
-            "user_agent": log.user_agent,
-            "created_at": log.created_at,
-            "user_username": log.user.username if log.user else None,
-            "user_email": log.user.email if log.user else None,
-        }
-        enriched_items.append(log_dict)
+    enriched_items = [AuditLogService.enrich_log(log) for log in result["items"]]
 
     return {
         "items": enriched_items,
@@ -75,27 +59,9 @@ def get_recent_logs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Get most recent audit logs (for dashboard widget)"""
+    """Get most recent audit logs (for dashboard widget)."""
     logs = AuditLogService.get_recent_logs(db=db, limit=limit)
-
-    enriched_logs = []
-    for log in logs:
-        log_dict = {
-            "id": log.id,
-            "user_id": log.user_id,
-            "action": log.action,
-            "resource": log.resource,
-            "resource_id": log.resource_id,
-            "details": log.details,
-            "ip_address": log.ip_address,
-            "user_agent": log.user_agent,
-            "created_at": log.created_at,
-            "user_username": log.user.username if log.user else None,
-            "user_email": log.user.email if log.user else None,
-        }
-        enriched_logs.append(log_dict)
-
-    return enriched_logs
+    return [AuditLogService.enrich_log(log) for log in logs]
 
 
 @router.get("/my-activity", response_model=list[AuditLogResponse])
@@ -104,26 +70,8 @@ def get_my_activity(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Get current user's recent activity"""
+    """Get current user's recent activity."""
     logs = AuditLogService.get_user_activity(
         db=db, user_id=current_user.id, limit=limit  # type: ignore[arg-type]
     )
-
-    enriched_logs = []
-    for log in logs:
-        log_dict = {
-            "id": log.id,
-            "user_id": log.user_id,
-            "action": log.action,
-            "resource": log.resource,
-            "resource_id": log.resource_id,
-            "details": log.details,
-            "ip_address": log.ip_address,
-            "user_agent": log.user_agent,
-            "created_at": log.created_at,
-            "user_username": current_user.username,
-            "user_email": current_user.email,
-        }
-        enriched_logs.append(log_dict)
-
-    return enriched_logs
+    return [AuditLogService.enrich_log(log, user=current_user) for log in logs]

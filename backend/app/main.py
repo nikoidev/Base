@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .api.routes import audit_logs, auth, permissions, profile, roles, users
+from .core.config import settings
 from .core.database import Base, engine
 
 # Create database tables
@@ -19,7 +20,7 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,6 +46,6 @@ app.include_router(profile.router, prefix="/api/profile", tags=["Profile"])
 def root():
     return {
         "message": "User Management System API",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "docs": "/docs",
     }

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -7,6 +7,7 @@ from ...core.database import get_db
 from ...schemas.role import RoleCreate, RoleListResponse, RoleResponse, RoleUpdate
 from ...services.role_service import RoleService
 from ..deps import get_current_active_user
+from ..rbac import require_permission
 
 router = APIRouter()
 
@@ -20,7 +21,7 @@ def read_roles(
     order_by: str = Query("id", description="Field to order by"),
     order_desc: bool = Query(False, description="Order descending"),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("role.read")),
 ):
     skip = (page - 1) * limit
     result = RoleService.get_roles(
@@ -39,7 +40,7 @@ def read_roles(
 def read_role(
     role_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("role.read")),
 ):
     role = RoleService.get_role(db, role_id=role_id)
     if role is None:
@@ -51,9 +52,8 @@ def read_role(
 def create_role(
     role: RoleCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("role.create")),
 ):
-    # Check if role already exists
     db_role = RoleService.get_role_by_name(db, name=role.name)
     if db_role:
         raise HTTPException(status_code=400, detail="Role name already registered")
@@ -66,7 +66,7 @@ def update_role(
     role_id: int,
     role: RoleUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("role.update")),
 ):
     db_role = RoleService.update_role(db, role_id=role_id, role=role)
     if db_role is None:
@@ -78,7 +78,7 @@ def update_role(
 def delete_role(
     role_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    current_user=Depends(require_permission("role.delete")),
 ):
     success = RoleService.delete_role(db, role_id=role_id)
     if not success:

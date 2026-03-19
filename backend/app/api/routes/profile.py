@@ -1,4 +1,3 @@
-import os
 import uuid
 from pathlib import Path
 from typing import Optional
@@ -101,6 +100,11 @@ async def upload_avatar(
     uploads_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate unique filename
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Filename is required.",
+        )
     file_extension = file.filename.split(".")[-1]
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
     file_path = uploads_dir / unique_filename
