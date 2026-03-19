@@ -13,6 +13,8 @@ pip-delete-this-directory.txt
 .pytest_cache/
 .coverage
 htmlcov/
+pgadmin_data/
+postgres_data/
 
 # FastAPI
 .env
