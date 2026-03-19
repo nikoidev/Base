@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  usuarios_postgres:
+    image: postgres:15
+    container_name: usuarios_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: usuarios_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./backend/usuarios_postgres_data:/var/lib/postgresql/data
+    networks:
+      - usuarios_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d usuarios_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  usuarios_pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: usuarios_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5051:80"
+    volumes:
+      - ./backend/usuarios_pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      usuarios_postgres:
+        condition: service_healthy
+    networks:
+      - usuarios_network
+    restart: unless-stopped
+
+networks:
+  usuarios_network:
+    driver: bridge

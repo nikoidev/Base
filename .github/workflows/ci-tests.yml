@@ -1,0 +1,98 @@
+name: CI - Tests & Coverage
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci-tests.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci-tests.yml'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: admin123
+          POSTGRES_DB: usuarios_db_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio httpx faker
+      
+      - name: Run tests with coverage
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://admin:admin123@localhost:5432/usuarios_db_test
+          SECRET_KEY: test-secret-key-for-ci-cd-testing-only
+          ALGORITHM: HS256
+          ACCESS_TOKEN_EXPIRE_MINUTES: 30
+        run: |
+          pytest tests/ \
+            --cov=app \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=80 \
+            -v
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        if: matrix.python-version == '3.12'
+        with:
+          file: ./backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+      
+      - name: Generate coverage badge
+        if: matrix.python-version == '3.12' && github.ref == 'refs/heads/main'
+        run: |
+          COVERAGE=$(python -c "import xml.etree.ElementTree as ET; tree = ET.parse('backend/coverage.xml'); root = tree.getroot(); print(f'{float(root.attrib[\"line-rate\"])*100:.1f}')")
+          echo "Coverage: $COVERAGE%"
+          
+          if (( $(echo "$COVERAGE >= 90" | bc -l) )); then
+            COLOR="brightgreen"
+          elif (( $(echo "$COVERAGE >= 80" | bc -l) )); then
+            COLOR="green"
+          elif (( $(echo "$COVERAGE >= 70" | bc -l) )); then
+            COLOR="yellow"
+          else
+            COLOR="red"
+          fi
+          
+          curl -X POST -H "Content-Type: application/json" \
+            -d "{\"schemaVersion\": 1, \"label\": \"coverage\", \"message\": \"$COVERAGE%\", \"color\": \"$COLOR\"}" \
+            https://img.shields.io/badge/coverage-$COVERAGE%25-$COLOR

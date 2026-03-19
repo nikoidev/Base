@@ -1,0 +1,104 @@
+[tool.black]
+line-length = 88
+target-version = ['py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | env
+  | __pycache__
+  | \.pytest_cache
+  | htmlcov
+  | build
+  | dist
+  | postgres_data
+  | pgadmin_data
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+skip_glob = [
+    "*/migrations/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+exclude = [
+    "venv",
+    ".venv",
+    "env",
+    "tests",
+    "migrations"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = [
+    "--strict-markers",
+    "--verbose",
+    "--cov=app",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+    "--cov-fail-under=80",
+]
+markers = [
+    "unit: Unit tests (fast, no DB required)",
+    "integration: Integration tests (requires DB)",
+    "auth: Authentication tests",
+    "users: User management tests",
+    "roles: Role management tests",
+    "permissions: Permission management tests",
+    "audit: Audit log tests",
+    "slow: Slow running tests",
+]
+
+[tool.bandit]
+exclude_dirs = [
+    "tests",
+    "venv",
+    ".venv",
+]
+skips = ["B101", "B601"]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
