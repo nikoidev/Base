@@ -1,10 +1,21 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { SunIcon, MoonIcon } from '@heroicons/react/24/outline'
 
 export default function ThemeToggle() {
   const { theme, toggleTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    // Return a placeholder with identical classes to avoid layout shift
+    return <button className="p-2 w-9 h-9 rounded-lg bg-gray-200 dark:bg-gray-700" aria-hidden="true" />
+  }
 
   return (
     <button

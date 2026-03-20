@@ -38,9 +38,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle('dark', newTheme === 'dark')
   }
 
-  if (!mounted) {
-    return <>{children}</>
-  }
+  // We no longer block the provider when !mounted.
+  // We just let it provide 'light' or initial state, preventing context undefined errors.
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
