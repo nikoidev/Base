@@ -24,7 +24,14 @@ export default function LoginPage() {
       toast.success('Login successful!')
       router.push('/dashboard')
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Login failed')
+      const status = error.response?.status
+      if (status === 401 || status === 400) {
+        toast.error('Usuario o contraseña incorrectos')
+      } else if (status === 422) {
+        toast.error('Por favor completa todos los campos')
+      } else {
+        toast.error('Error al conectar con el servidor. Intenta de nuevo.')
+      }
     } finally {
       setLoading(false)
     }
