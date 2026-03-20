@@ -10,10 +10,13 @@ import { User, UserCreate, UserUpdate, Role } from '@/types'
 import { useDebounce } from '@/hooks/useDebounce'
 import toast from 'react-hot-toast'
 import { PencilIcon, TrashIcon, PlusIcon, MagnifyingGlassIcon, FunnelIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline'
+import Can from '@/components/Can'
+import { usePermissions } from '@/hooks/usePermissions'
 
 export const dynamic = 'force-dynamic'
 
 export default function UsersPage() {
+  const { can } = usePermissions()
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
@@ -174,16 +177,18 @@ export default function UsersPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Usuarios ({total})
           </h1>
-          <button
-            onClick={() => {
-              resetForm()
-              setShowModal(true)
-            }}
-            className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
-          >
-            <PlusIcon className="w-5 h-5 mr-2" />
-            Nuevo Usuario
-          </button>
+          <Can permission="user.create">
+            <button
+              onClick={() => {
+                resetForm()
+                setShowModal(true)
+              }}
+              className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+            >
+              <PlusIcon className="w-5 h-5 mr-2" />
+              Nuevo Usuario
+            </button>
+          </Can>
         </div>
 
         {/* Search and Filters */}
@@ -341,9 +346,11 @@ export default function UsersPage() {
                       >
                         Creado <SortIcon field="created_at" />
                       </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Acciones
-                      </th>
+                      {can('user.update') || can('user.delete') ? (
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          Acciones
+                        </th>
+                      ) : null}
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -393,18 +400,22 @@ export default function UsersPage() {
                           {new Date(user.created_at).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleEdit(user)}
-                            className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 mr-4"
-                          >
-                            <PencilIcon className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(user.id)}
-                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            <TrashIcon className="w-5 h-5" />
-                          </button>
+                          <Can permission="user.update">
+                            <button
+                              onClick={() => handleEdit(user)}
+                              className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 mr-4"
+                            >
+                              <PencilIcon className="w-5 h-5" />
+                            </button>
+                          </Can>
+                          <Can permission="user.delete">
+                            <button
+                              onClick={() => handleDelete(user.id)}
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              <TrashIcon className="w-5 h-5" />
+                            </button>
+                          </Can>
                         </td>
                       </tr>
                     ))}

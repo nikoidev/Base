@@ -6,10 +6,13 @@ import { permissionsApi } from '@/lib/api/permissions'
 import { Permission, PermissionCreate, PermissionUpdate } from '@/types'
 import toast from 'react-hot-toast'
 import { PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import Can from '@/components/Can'
+import { usePermissions } from '@/hooks/usePermissions'
 
 export const dynamic = 'force-dynamic'
 
 export default function PermissionsPage() {
+  const { can } = usePermissions()
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -101,13 +104,15 @@ export default function PermissionsPage() {
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             Gestión de Permisos
           </h3>
-          <button
-            onClick={handleCreate}
-            className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
-          >
-            <PlusIcon className="w-5 h-5 mr-2" />
-            Agregar Permiso
-          </button>
+          <Can permission="permission.create">
+            <button
+              onClick={handleCreate}
+              className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+            >
+              <PlusIcon className="w-5 h-5 mr-2" />
+              Agregar Permiso
+            </button>
+          </Can>
         </div>
 
         {loading ? (
@@ -134,9 +139,11 @@ export default function PermissionsPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Estado
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Acciones
-                  </th>
+                  {can('permission.update') || can('permission.delete') ? (
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Acciones
+                    </th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -170,18 +177,22 @@ export default function PermissionsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleEdit(permission)}
-                        className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 mr-4"
-                      >
-                        <PencilIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(permission.id)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
+                      <Can permission="permission.update">
+                        <button
+                          onClick={() => handleEdit(permission)}
+                          className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 mr-4"
+                        >
+                          <PencilIcon className="w-5 h-5" />
+                        </button>
+                      </Can>
+                      <Can permission="permission.delete">
+                        <button
+                          onClick={() => handleDelete(permission.id)}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </button>
+                      </Can>
                     </td>
                   </tr>
                 ))}
