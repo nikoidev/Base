@@ -4,6 +4,7 @@ import './globals.css'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Toaster } from 'react-hot-toast'
+import DevFileIndicator from '@/components/DevFileIndicator'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -28,6 +29,7 @@ export default function RootLayout({
           <AuthProvider>
             {children}
             <Toaster position="top-right" />
+            <DevFileIndicator />
           </AuthProvider>
         </ThemeProvider>
       </body>
