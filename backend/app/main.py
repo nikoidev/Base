@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -7,15 +8,30 @@ from fastapi.staticfiles import StaticFiles
 from .api.routes import audit_logs, auth, permissions, profile, roles, users
 from .core.config import settings
 from .core.database import Base, engine
+from .core.rate_limit import limiter
+from .core.logger import setup_logging
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize structured logger upon startup
+    setup_logging()
+    yield
 
 app = FastAPI(
     title="User Management System API",
     description="Complete CRUD API for Users, Roles, and Permissions with Audit Log",
     version="2.0.0",
+    lifespan=lifespan,
 )
+
+# Configure Rate Limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configure CORS
 app.add_middleware(

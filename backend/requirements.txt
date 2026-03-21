@@ -10,3 +10,5 @@ python-multipart==0.0.12
 alembic==1.14.0
 python-dotenv==1.2.1
 email-validator==2.3.0
+slowapi==0.1.9
+loguru==0.7.3
